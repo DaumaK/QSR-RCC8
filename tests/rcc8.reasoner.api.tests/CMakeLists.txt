@@ -7,8 +7,7 @@ add_executable (
 target_link_libraries (
     rcc8.reasoner.api.tests
     rcc8.reasoner.api
-    libgtest
-    libgmock
+    gtest_main
     )
 
 add_test (

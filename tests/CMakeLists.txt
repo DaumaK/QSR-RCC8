@@ -1,37 +1,44 @@
-# Adapted from http://www.kaizou.org/2014/11/gtest-cmake.html
-find_package (Threads REQUIRED)
+#From https://github.com/google/googletest/blob/master/googletest/README.md
 
-include (ExternalProject)
-ExternalProject_Add (
-    gtest
-    URL https://github.com/google/googletest/archive/master.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
-    INSTALL_COMMAND ""
+# Download and unpack googletest at configure time
+configure_file (CMakeLists.txt.in googletest-download/CMakeLists.txt)
+execute_process (
+    COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download
     )
 
-ExternalProject_Get_Property (gtest source_dir binary_dir)
+if (result)
+    message (FATAL_ERROR "CMake step for googletest failed: ${result}")
+endif ()
 
-add_library (libgtest IMPORTED STATIC GLOBAL)
-add_dependencies (libgtest gtest)
-
-set_target_properties (
-    libgtest PROPERTIES
-    "IMPORTED_LOCATION" "${binary_dir}/lib/libgtest.a"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+execute_process (
+    COMMAND ${CMAKE_COMMAND} --build .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download
     )
 
-add_library (libgmock IMPORTED STATIC GLOBAL)
-add_dependencies (libgmock gtest)
+if(result)
+    message (FATAL_ERROR "Build step for googletest failed: ${result}")
+endif()
 
-set_target_properties (
-    libgmock PROPERTIES
-    "IMPORTED_LOCATION" "${binary_dir}/lib/libgmock.a"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    )
+# Prevent overriding the parent project's compiler/linker
+# settings on Windows
+set (gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-include_directories (
-    "${source_dir}/googletest/include"
-    "${source_dir}/googlemock/include"
-    )
+# Add googletest directly to our build. This defines
+# the gtest and gtest_main targets.
+add_subdirectory (
+    ${CMAKE_CURRENT_BINARY_DIR}/googletest-src
+    ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
+    EXCLUDE_FROM_ALL
+)
+
+# The gtest/gtest_main targets carry header search path
+# dependencies automatically when using CMake 2.8.11 or
+# later. Otherwise we have to add them here ourselves.
+if (CMAKE_VERSION VERSION_LESS 2.8.11)
+    include_directories ("${gtest_SOURCE_DIR}/include")
+endif ()
 
 add_subdirectory (rcc8.reasoner.api.tests)

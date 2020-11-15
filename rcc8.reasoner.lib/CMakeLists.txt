@@ -1,9 +1,10 @@
 add_library (
     rcc8.reasoner.lib
-    QSR/rcc8.h
+    include/QSR/rcc8.h
+    internal/reasoner_internal.h
+    src/reasoner_dc.cpp src/reasoner_ec.cpp src/reasoner_eq.cpp
+    src/constraint_network.cpp
     )
 
-# temporary fix for cmake not knowing what language this is.
-set_target_properties(rcc8.reasoner.lib PROPERTIES LINKER_LANGUAGE CXX)
-
-target_include_directories (rcc8.reasoner.lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories (rcc8.reasoner.lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories (rcc8.reasoner.lib PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/internal)

@@ -1,0 +1,46 @@
+#include <QSR/rcc8.h>
+#include "reasoner_internal.h"
+
+using namespace qsr::rcc8;
+
+ConstraintNetwork::ConstraintNetwork (size_t variableCount)
+    : m_variableCount (variableCount)
+    , m_dcRelations (std::vector<Relation> ())
+    , m_ecRelations (std::vector<Relation> ())
+    , m_poRelations (std::vector<Relation> ())
+    , m_eqRelations (std::vector<Relation> ())
+    , m_tppRelations (std::vector<Relation> ())
+    , m_ntppRelations (std::vector<Relation> ())
+    { }
+
+ConstraintNetwork::ConstraintNetwork (size_t variableCount, std::vector<Relation> relations)
+    : ConstraintNetwork (variableCount)
+    {
+    for (auto const& relation : relations)
+        AddRelation (relation);
+    }
+
+void ConstraintNetwork::AddRelation (Relation const relation)
+    {
+    switch (relation.relationType)
+        {
+        case RelationType::DC:    m_dcRelations.push_back (relation); break;
+        case RelationType::EC:    m_ecRelations.push_back (relation); break;
+        case RelationType::PO:    m_poRelations.push_back (relation); break;
+        case RelationType::EQ:    m_eqRelations.push_back (relation); break;
+        case RelationType::TPP:   m_tppRelations.push_back (relation); break;
+        case RelationType::NTPP:  m_ntppRelations.push_back (relation); break;
+        case RelationType::TPPi:  m_tppRelations.push_back (Relation { .r1 = relation.r2, .r2 = relation.r1, relationType: RelationType::TPP }); break;
+        case RelationType::NTPPi: m_ntppRelations.push_back (Relation { .r1 = relation.r2, .r2 = relation.r1, relationType: RelationType::NTPP }); break;
+        }
+    }
+
+bool ConstraintNetwork::IsSatisfiable ()
+    {
+    // Register EQ relations
+    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount);
+
+    return internal::reasoner_utils::CheckDCRelations (m_dcRelations, context)
+        && internal::reasoner_utils::CheckECRelations (m_ecRelations, context);
+
+    }

@@ -1,7 +1,7 @@
 add_executable (
     rcc8.reasoner.lib.tests
     main.cpp
-    eq_tests.cpp
+    rcc8_network_tests.cpp
 )
 
 target_link_libraries (

@@ -2,7 +2,10 @@ add_library (
     rcc8.reasoner.lib
     include/QSR/rcc8.h
     internal/reasoner_internal.h
-    src/reasoner_dc.cpp src/reasoner_ec.cpp src/reasoner_eq.cpp
+    src/region.cpp
+    src/modal_world.cpp
+    src/reasoner_utils.cpp
+    src/solution_context.cpp
     src/constraint_network.cpp
     )
 

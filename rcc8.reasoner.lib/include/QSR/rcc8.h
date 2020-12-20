@@ -53,11 +53,11 @@ namespace qsr::rcc8
             std::vector<Relation> m_ntppRelations;
 
         public:
-            ConstraintNetwork (size_t variableCount);
+            explicit ConstraintNetwork (size_t variableCount);
             ConstraintNetwork (size_t variableCount, std::vector<Relation> relations);
 
         public:
             bool IsSatisfiable ();
-            void AddRelation (Relation const relation);
+            void AddRelation (Relation relation);
         };
     }

@@ -54,7 +54,7 @@ namespace qsr::rcc8
 
         public:
             explicit ConstraintNetwork (size_t variableCount);
-            ConstraintNetwork (size_t variableCount, std::vector<Relation> relations);
+            ConstraintNetwork (size_t variableCount, std::vector<Relation> const& relations);
 
         public:
             bool IsSatisfiable ();

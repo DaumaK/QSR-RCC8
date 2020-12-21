@@ -13,11 +13,11 @@ ConstraintNetwork::ConstraintNetwork (size_t variableCount)
     , m_ntppRelations (std::vector<Relation> ())
     { }
 
-ConstraintNetwork::ConstraintNetwork (size_t variableCount, std::vector<Relation> relations)
+ConstraintNetwork::ConstraintNetwork (size_t variableCount, std::vector<Relation> const& relations)
     : ConstraintNetwork (variableCount)
     {
     for (auto const& relation : relations)
-            AddRelation (relation);
+        AddRelation (relation);
     }
 
 void ConstraintNetwork::AddRelation (Relation relation)

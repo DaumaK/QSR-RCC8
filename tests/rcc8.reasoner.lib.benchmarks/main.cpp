@@ -1,6 +1,7 @@
 #include <vector>
 #include <benchmark/benchmark.h>
-#include <QSR/rcc8.h>
+#include "wrappers.h"
+#include "benchmark_administrator.h"
 
 /**
  * https://github.com/google/benchmark suggests running this in release:
@@ -12,27 +13,36 @@
  * sudo cpupower frequency-set --governor powersave
  */
 
-void Test(benchmark::State& state)
+// this is not pretty, but should work...
+auto g_administrator = BenchmarkAdministrator ();
+
+template<class T_reasoner>
+void Test (benchmark::State& state)
     {
-    auto relations = std::vector<qsr::rcc8::Relation> ();
-    size_t n = state.range (0) / 2;
+    size_t n = state.range (0);
 
-    for (size_t i = 0; i < n / 2; i++)
-        {
-        relations.push_back ({i, n - i, qsr::rcc8::RelationType::PO});
-        relations.push_back ({i, i + 1, qsr::rcc8::RelationType::TPP});
-        }
+    auto relations = g_administrator.GetOrGenerateRelations (n, 1, 1, 1, 1, 10, 10, 1);
+    auto reasoner = T_reasoner (n, relations);
 
-    auto network = qsr::rcc8::ConstraintNetwork (state.range (0), relations);
-
-    bool satisfiable = true;
+    bool satisfiable;
     for (auto _ : state)
-        satisfiable = satisfiable && network.IsSatisfiable ();
+        satisfiable = reasoner.IsSatisfiable ();
 
-    if (!satisfiable)
-        state.SkipWithError ("Incorrect result computed.");
+    g_administrator.RegisterResult (state, satisfiable);
     }
 
-BENCHMARK (Test)->Arg(1000);
+#define BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS(n)      \
+        BENCHMARK_TEMPLATE (Test, QsrWrapper)->Arg (n); \
+        BENCHMARK_TEMPLATE (Test, GqrWrapper)->Arg (n);
 
-BENCHMARK_MAIN();
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (10);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (50);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (100);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (250);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (500);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (750);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (1000);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (1500);
+BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (2000);
+
+BENCHMARK_MAIN ();

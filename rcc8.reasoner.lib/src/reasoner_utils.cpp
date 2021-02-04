@@ -36,7 +36,7 @@ void reasoner_utils::RegisterECRelations (std::vector<Relation> const& ecRelatio
         region1.SetInteriorValuation (p2, Valuation::FALSE);
         region2.SetInteriorValuation (p1, Valuation::FALSE);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, {&region1, &region2 }, { }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, { &region1, &region2 }, { }));
         }
     }
 
@@ -50,11 +50,11 @@ struct GraphNode
     GraphNode (): visited (false), adjacent (std::vector<size_t> ()) { }
     };
 
-SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount)
+SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t weightedRelationCount)
     {
     // For convenience store cluster index in another vector
     auto graphNodes = std::vector<GraphNode> (variableCount);
-    auto clusterIndices = std::vector<size_t> (variableCount); // i.e. our map from variable to world
+    auto clusterIndices = new size_t[variableCount]; // i.e. our map from variable to world
 
     // Log EQ relation as graph transition
     for (auto const& eqRelation : eqRelations)
@@ -97,7 +97,7 @@ SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const
         clusterCount++;
         }
 
-    return SolutionContext (std::move (clusterIndices), clusterCount);
+    return SolutionContext (clusterIndices, clusterCount, clusterCount + weightedRelationCount);
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -165,10 +165,12 @@ void reasoner_utils::RegisterNTPPRelations (std::vector<Relation> const& ntppRel
 bool ResolvePPDependencies (SolutionContext& context)
     {
     auto queue = std::queue<Region*> ();
-    for (auto& region : context.GetRegions ())
+
+    auto regions = context.GetRegions ();
+    for (size_t i = 0; i < context.GetRegionCount (); i++)
         {
-        if (!region.HasDependencies ())
-            queue.push (&region);
+        if (!regions[i].HasDependencies ())
+            queue.push (&regions[i]);
         }
 
     size_t iterations = 0;
@@ -206,7 +208,7 @@ bool ResolvePPDependencies (SolutionContext& context)
         iterations++;
         }
 
-    return iterations == context.GetRegions ().size ();
+    return iterations == context.GetRegionCount ();
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -216,8 +218,10 @@ bool reasoner_utils::PropagateValuationsToWorlds (SolutionContext &context)
     if (!ResolvePPDependencies (context))
         return false;
 
-    for (auto& world : context.GetWorlds ())
+    auto* modalWorlds = context.GetWorlds ();
+    for (size_t i = 0; i < context.GetWorldCount (); i++)
         {
+        auto world = modalWorlds[i];
         for (auto& interiorRegion : world.GetInteriorRegions ())
             {
             for (auto valuation : interiorRegion->GetInteriorValuations ())

@@ -57,7 +57,7 @@ namespace qsr::rcc8::internal
     /*******************************************************************************
      * A modal logic world with region dependencies and individual valuations.
      *******************************************************************************/
-    class ModalWorld
+    struct ModalWorld
         {
         private:
             std::unordered_map<size_t, Valuation> m_valuations;
@@ -65,6 +65,7 @@ namespace qsr::rcc8::internal
             std::vector<Region*> m_ownersAsInterior;
 
         public:
+            ModalWorld () = default;
             ModalWorld (std::unordered_map<size_t, Valuation>&& valuations, std::vector<Region*>&& ownersAsExterior, std::vector<Region*>&& ownersAsInterior)
                 : m_valuations (valuations)
                 , m_ownersAsExterior (ownersAsExterior)
@@ -87,20 +88,30 @@ namespace qsr::rcc8::internal
     class SolutionContext
         {
         private:
-            std::vector<Region> m_regions;
-            std::vector<ModalWorld> m_modalWorlds;
-            std::vector<size_t> m_calculusVariableToPropositionalVariable;
+            size_t m_regionCount;
+            Region* m_regions;
+
+            size_t m_modalWorldCount;
+            ModalWorld* m_modalWorlds;
+
+            size_t* m_calculusVariableToPropositionalVariable;
             size_t m_nextPropVar;
 
         public:
-            SolutionContext (std::vector<size_t>&& calculusVariableToPropositionalVariable, size_t minimalWorldCount);
+            SolutionContext (size_t* calculusVariableToPropositionalVariable, size_t regionCount, size_t modalWorldCount);
+            ~SolutionContext ();
 
         public:
-            inline size_t GetPropVarFromCalcVar (size_t variable) const { return m_calculusVariableToPropositionalVariable[variable]; }
+            inline size_t GetPropVarFromCalcVar (size_t variable) { return m_calculusVariableToPropositionalVariable[variable]; }
             inline Region& GetRegionFromPropVar (size_t propVar) { return m_regions[propVar]; }
-            inline std::vector<Region>& GetRegions () { return m_regions; }
-            inline std::vector<ModalWorld>& GetWorlds () { return m_modalWorlds; }
-            inline ModalWorld& AddWorld (ModalWorld&& world) { return m_modalWorlds.emplace_back (world); }
+
+            inline size_t GetRegionCount () { return m_regionCount; }
+            inline Region* GetRegions () { return m_regions; }
+
+            inline size_t GetWorldCount () { return m_modalWorldCount; }
+            inline ModalWorld* GetWorlds () { return m_modalWorlds; }
+
+            inline void AddWorld (ModalWorld&& world) { m_modalWorlds[m_modalWorldCount++] = world; }
             inline size_t CreateNewPropVar () { return m_nextPropVar++; }
 
         };
@@ -110,7 +121,7 @@ namespace qsr::rcc8::internal
      *******************************************************************************/
     namespace reasoner_utils
         {
-        SolutionContext RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount);
+        SolutionContext RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t weightedRelationCount);
         void RegisterDCRelations (std::vector<Relation> const& dcRelations, SolutionContext& context);
         void RegisterECRelations (std::vector<Relation> const& ecRelations, SolutionContext& context);
         void RegisterPORelations (std::vector<Relation> const& poRelations, SolutionContext& context);

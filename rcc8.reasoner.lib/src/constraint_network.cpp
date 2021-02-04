@@ -37,8 +37,17 @@ void ConstraintNetwork::AddRelation (Relation relation)
 
 bool ConstraintNetwork::IsSatisfiable ()
     {
+    // Sum of relations adjusted weighted by how many modal worlds they will create.
+    size_t weightedRelationCount =
+            m_dcRelations.size () * 0 +
+            m_ecRelations.size () * 1 +
+            m_poRelations.size () * 3 +
+            m_eqRelations.size () * 0 +
+            m_tppRelations.size () * 2 +
+            m_ntppRelations.size () * 1;
+
     // Register EQ relations first
-    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount);
+    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount, weightedRelationCount);
 
     internal::reasoner_utils::RegisterDCRelations (m_dcRelations, context);
     internal::reasoner_utils::RegisterECRelations (m_ecRelations, context);

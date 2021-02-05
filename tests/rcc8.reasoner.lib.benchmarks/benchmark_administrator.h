@@ -15,7 +15,7 @@ class BenchmarkAdministrator
         std::vector<qsr::rcc8::Relation> m_relations;
         bool m_result;
 
-    private:
+    public:
         std::vector<qsr::rcc8::Relation> GenerateRelations
         (
         size_t variableCount,
@@ -49,7 +49,7 @@ class BenchmarkAdministrator
 
             return m_relations;
             }
-
+    /*
     public:
         std::vector<qsr::rcc8::Relation> GetOrGenerateRelations
         (
@@ -89,4 +89,5 @@ class BenchmarkAdministrator
 
             state.SkipWithError (stream.str ().c_str ());
             }
+    */
     };

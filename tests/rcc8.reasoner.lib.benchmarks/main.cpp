@@ -20,29 +20,45 @@ template<class T_reasoner>
 void Test (benchmark::State& state)
     {
     size_t n = state.range (0);
+    size_t dcProb = state.range (1);
+    size_t ecProb = state.range (2);
+    size_t poProb = state.range (3);
+    size_t eqProb = state.range (4);
+    size_t tppProb = state.range (5);
+    size_t ntppProb = state.range (6);
+    size_t noneProb = state.range (7);
 
-    auto relations = g_administrator.GetOrGenerateRelations (n, 1, 1, 1, 1, 10, 10, 1);
+    auto relations = g_administrator.GenerateRelations (n, dcProb, ecProb, poProb, eqProb, tppProb, ntppProb, noneProb);
     auto reasoner = T_reasoner (n, relations);
 
-    bool satisfiable;
     for (auto _ : state)
-        satisfiable = reasoner.IsSatisfiable ();
-
-    g_administrator.RegisterResult (state, satisfiable);
+        reasoner.IsSatisfiable ();
     }
 
-#define BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS(n)      \
-        BENCHMARK_TEMPLATE (Test, QsrWrapper)->Arg (n); \
-        BENCHMARK_TEMPLATE (Test, GqrWrapper)->Arg (n);
+#define BENCH_REGION_COUNTS { 10, 50, 100, 250, 500, 750, 1000, 1500, 2000 }
+#define BENCH_PROBABILITIES std::vector<std::vector<int64_t> > { \
+    /*(dc, ec, po, eq, tpp, ntpp, none)*/                        \
+    { 1, 1, 1, 1, 1, 1, 6 },                                     \
+    { 1, 1, 1, 0, 1, 1, 5 },                                     \
+    { 1, 1, 1, 0, 3, 3, 9 },                                     \
+    { 0, 0, 0, 0, 1, 1, 2 }                                      \
+    }
 
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (10);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (50);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (100);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (250);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (500);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (750);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (1000);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (1500);
-BENCHMARK_IMPLEMENTATIONS_FOR_NUMB_VARS (2000);
+void GenerateArguments (benchmark::internal::Benchmark* bench)
+    {
+    bench->ArgNames ({ "region count", "dc", "ec", "po", "eq", "tpp", "ntpp", "none" });
+    for (int64_t regionCount : BENCH_REGION_COUNTS)
+        {
+        for (std::vector<int64_t> probabilities : BENCH_PROBABILITIES)
+            {
+            std::vector<int64_t> args = { regionCount };
+            args.insert (args.end (), probabilities.begin (), probabilities.end ());
+            bench->Args (args);
+            }
+        }
+    }
+
+BENCHMARK_TEMPLATE (Test, QsrWrapper)->Apply (GenerateArguments)->Repetitions (5);
+BENCHMARK_TEMPLATE (Test, GqrWrapper)->Apply (GenerateArguments)->Repetitions (5);
 
 BENCHMARK_MAIN ();

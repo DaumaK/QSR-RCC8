@@ -17,5 +17,7 @@ namespace utils
             case qsr::rcc8::RelationType::TPPi: return "( TPPI )";
             case qsr::rcc8::RelationType::NTPPi: return "( NTPPI )";
             }
+
+        return ""; // Unreachable, for compiler...
         }
     }

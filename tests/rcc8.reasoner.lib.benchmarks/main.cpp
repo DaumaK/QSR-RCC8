@@ -58,7 +58,7 @@ void GenerateArguments (benchmark::internal::Benchmark* bench)
         }
     }
 
-BENCHMARK_TEMPLATE (Test, QsrWrapper)->Apply (GenerateArguments)->Repetitions (5);
-BENCHMARK_TEMPLATE (Test, GqrWrapper)->Apply (GenerateArguments)->Repetitions (5);
+BENCHMARK_TEMPLATE (Test, QsrWrapper)->Apply (GenerateArguments);
+//BENCHMARK_TEMPLATE (Test, GqrWrapper)->Apply (GenerateArguments)->Repetitions (5);
 
 BENCHMARK_MAIN ();

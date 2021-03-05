@@ -10,12 +10,13 @@ namespace qsr::rcc8::internal
     /*******************************************************************************
      * Possible values for a valuation.
      *******************************************************************************/
-    enum class Valuation
+    enum Valuation : short
         {
-        UNSET         = 0,
-        FALSE         = 1,
-        TRUE          = 2,
-        CONTRADICTION = FALSE | TRUE
+        UNSET          = 0,
+        FALSE          = 1,
+        TRUE           = 2,
+        INTERIOR_FALSE = 4,
+        INTERIOR_TRUE  = 8
         };
 
     /*******************************************************************************
@@ -24,7 +25,8 @@ namespace qsr::rcc8::internal
     class Region
         {
         private:
-            std::unordered_map<size_t, Valuation> m_interiorValuations;
+            size_t m_assignedPropVar;
+
             std::unordered_map<size_t, Valuation> m_valuations;
 
             std::vector<Region*> m_ntppDependants;
@@ -35,11 +37,7 @@ namespace qsr::rcc8::internal
 
         public:
             Valuation GetValuation (size_t propVar);
-            bool SetValuation (size_t propVar, Valuation valuation);
-            Valuation GetInteriorValuation (size_t propVar);
-            bool SetInteriorValuation (size_t propVar, Valuation valuation);
-
-            inline std::unordered_map<size_t, Valuation>& GetInteriorValuations () { return m_interiorValuations; }
+            void SetValuation (size_t propVar, Valuation valuation);
             inline std::unordered_map<size_t, Valuation>& GetValuations () { return m_valuations; }
 
             void AddTPPDependant (Region* dependant) { dependant->m_tppDependencyCount++; m_tppDependants.push_back (dependant); }
@@ -52,6 +50,9 @@ namespace qsr::rcc8::internal
             inline void DecrementNTPPDependencyCount () { m_ntppDependencyCount--; }
 
             inline bool HasDependencies () { return m_tppDependencyCount || m_ntppDependencyCount; }
+
+            inline size_t GetPropVar () { return m_assignedPropVar; }
+            inline void SetPropVar (size_t propVar) { m_assignedPropVar = propVar; }
         };
 
     /*******************************************************************************
@@ -61,22 +62,18 @@ namespace qsr::rcc8::internal
         {
         private:
             std::unordered_map<size_t, Valuation> m_valuations;
-            std::vector<Region*> m_ownersAsExterior;
-            std::vector<Region*> m_ownersAsInterior;
+            std::vector<Region*> m_owners;
 
         public:
-            ModalWorld (std::unordered_map<size_t, Valuation>&& valuations, std::vector<Region*>&& ownersAsExterior, std::vector<Region*>&& ownersAsInterior)
+            ModalWorld (std::unordered_map<size_t, Valuation>&& valuations, std::vector<Region*>&& owners)
                 : m_valuations (valuations)
-                , m_ownersAsExterior (ownersAsExterior)
-                , m_ownersAsInterior (ownersAsInterior)
+                , m_owners(owners)
                 { }
 
         public:
             Valuation GetValuation (size_t propVar);
             bool SetValuation (size_t propVar, Valuation valuation);
-
-            std::vector<Region*> GetInteriorRegions () { return m_ownersAsInterior; }
-            std::vector<Region*> GetExteriorRegions () { return m_ownersAsExterior; }
+            std::vector<Region*> GetOwners () { return m_owners; }
 
         };
 
@@ -90,7 +87,6 @@ namespace qsr::rcc8::internal
             std::vector<Region> m_regions;
             std::vector<ModalWorld> m_modalWorlds;
             std::vector<size_t> m_calculusVariableToPropositionalVariable;
-            size_t m_nextPropVar;
 
         public:
             SolutionContext (std::vector<size_t>&& calculusVariableToPropositionalVariable, size_t minimalWorldCount);
@@ -101,7 +97,6 @@ namespace qsr::rcc8::internal
             inline std::vector<Region>& GetRegions () { return m_regions; }
             inline std::vector<ModalWorld>& GetWorlds () { return m_modalWorlds; }
             inline ModalWorld& AddWorld (ModalWorld&& world) { return m_modalWorlds.emplace_back (world); }
-            inline size_t CreateNewPropVar () { return m_nextPropVar++; }
 
         };
 

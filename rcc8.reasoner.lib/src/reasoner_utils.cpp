@@ -33,10 +33,10 @@ void reasoner_utils::RegisterECRelations (std::vector<Relation> const& ecRelatio
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        region1.SetInteriorValuation (p2, Valuation::FALSE);
-        region2.SetInteriorValuation (p1, Valuation::FALSE);
+        region1.SetValuation (p2, Valuation::INTERIOR_FALSE);
+        region2.SetValuation (p1, Valuation::INTERIOR_FALSE);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, {&region1, &region2 }, { }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, {&region1, &region2 }));
         }
     }
 
@@ -112,9 +112,9 @@ void reasoner_utils::RegisterPORelations (std::vector<Relation> const& poRelatio
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, { }, {&region1, &region2 }));
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { }, { &region2 }));
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::FALSE } }, { }, { &region1 }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::INTERIOR_TRUE }, { p2, Valuation::INTERIOR_TRUE } }, {&region1, &region2 }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::INTERIOR_TRUE } }, { &region2 }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::INTERIOR_TRUE }, { p2, Valuation::FALSE } }, { &region1 }));
         }
     }
 
@@ -130,13 +130,9 @@ void reasoner_utils::RegisterTPPRelations (std::vector<Relation> const& tppRelat
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { }, { &region2 }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { &region2 }));
 
-        size_t pNew = context.CreateNewPropVar ();
-        context.AddWorld (ModalWorld ({ { pNew, Valuation::TRUE }, { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, {&region1, &region2 }, { }));
-
-        region1.SetInteriorValuation (pNew, Valuation::FALSE);
-        region2.SetInteriorValuation (pNew, Valuation::FALSE);
+        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, (Valuation) (Valuation::TRUE | Valuation::INTERIOR_FALSE) } }, {&region1, &region2 }));
 
         region2.AddTPPDependant (&region1);
         }
@@ -154,7 +150,7 @@ void reasoner_utils::RegisterNTPPRelations (std::vector<Relation> const& ntppRel
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { }, { &region2 }));
+        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { &region2 }));
 
         region2.AddNTPPDependant (&region1);
         }
@@ -186,8 +182,7 @@ bool ResolvePPDependencies (SolutionContext& context)
             for (auto valuation : region->GetValuations ())
                 ntppDependant->SetValuation (valuation.first, valuation.second);
 
-            for (auto valuation : region->GetInteriorValuations ())
-                ntppDependant->SetValuation (valuation.first, valuation.second);
+            ntppDependant->SetValuation (region->GetPropVar (), Valuation::INTERIOR_TRUE);
             }
 
         for (auto* tppDependant : region->GetTPPDependants ())
@@ -199,8 +194,6 @@ bool ResolvePPDependencies (SolutionContext& context)
             for (auto valuation : region->GetValuations ())
                 tppDependant->SetValuation (valuation.first, valuation.second);
 
-            for (auto valuation : region->GetInteriorValuations ())
-                tppDependant->SetInteriorValuation (valuation.first, valuation.second);
             }
 
         iterations++;
@@ -218,24 +211,9 @@ bool reasoner_utils::PropagateValuationsToWorlds (SolutionContext &context)
 
     for (auto& world : context.GetWorlds ())
         {
-        for (auto& interiorRegion : world.GetInteriorRegions ())
+        for (auto& owners : world.GetOwners ())
             {
-            for (auto valuation : interiorRegion->GetInteriorValuations ())
-                {
-                if (!world.SetValuation (valuation.first, valuation.second))
-                    return false;
-                }
-
-            for (auto valuation : interiorRegion->GetValuations ())
-                {
-                if (!world.SetValuation (valuation.first, valuation.second))
-                    return false;
-                }
-            }
-
-        for (auto& exteriorRegion : world.GetExteriorRegions ())
-            {
-            for (auto valuation : exteriorRegion->GetValuations ())
+            for (auto valuation : owners->GetValuations ())
                 {
                 if (!world.SetValuation (valuation.first, valuation.second))
                     return false;

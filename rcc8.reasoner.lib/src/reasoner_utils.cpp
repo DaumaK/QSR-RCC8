@@ -105,8 +105,8 @@ SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const
         strongConComp[i] = root->componentIndex;
         }
 
-    size_t expectedTppCount = std::min (tppRelationCount, sscCount);
-    size_t expectedNtppCount = std::min (ntppRelationCount, sscCount);
+    size_t expectedTppCount = tppRelationCount; //std::min (tppRelationCount, sscCount);
+    size_t expectedNtppCount = ntppRelationCount; //std::min (ntppRelationCount, sscCount);
 
     delete [] components;
 

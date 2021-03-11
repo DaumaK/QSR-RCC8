@@ -37,8 +37,14 @@ void ConstraintNetwork::AddRelation (Relation relation)
 
 bool ConstraintNetwork::IsSatisfiable ()
     {
+    size_t expectedWorldCountFromRel = m_ecRelations.size ()
+        + 3 * m_poRelations.size ()
+        + 2 * m_tppRelations.size ()
+        + m_ntppRelations.size ();
+
     // Register EQ relations first
-    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount);
+    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount, expectedWorldCountFromRel,
+                                                    m_tppRelations.size (), m_ntppRelations.size ());
 
     internal::reasoner_utils::RegisterDCRelations (m_dcRelations, context);
     internal::reasoner_utils::RegisterECRelations (m_ecRelations, context);

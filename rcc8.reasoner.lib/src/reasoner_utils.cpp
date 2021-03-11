@@ -1,4 +1,3 @@
-#include <queue>
 #include <QSR/rcc8.h>
 #include "reasoner_internal.h"
 
@@ -36,68 +35,82 @@ void reasoner_utils::RegisterECRelations (std::vector<Relation> const& ecRelatio
         region1.SetValuation (p2, Valuation::INTERIOR_FALSE);
         region2.SetValuation (p1, Valuation::INTERIOR_FALSE);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, Valuation::TRUE } }, {&region1, &region2 }));
+        auto& world = context.AddWorld ({ &region1, &region2 });
+        world.SetValuation (p1, Valuation::TRUE);
+        world.SetValuation (p2, Valuation::TRUE);
         }
     }
 
 //---------------------------------------------------------------------------------------------------------------------
 
-struct GraphNode
+struct Component
     {
-    bool visited;
-    std::vector<size_t> adjacent;
-
-    GraphNode (): visited (false), adjacent (std::vector<size_t> ()) { }
+    Component* parent = nullptr;
+    size_t size = 1;
+    size_t componentIndex;
     };
 
-SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount)
+inline Component* Find (Component* component)
     {
-    // For convenience store cluster index in another vector
-    auto graphNodes = std::vector<GraphNode> (variableCount);
-    auto clusterIndices = std::vector<size_t> (variableCount); // i.e. our map from variable to world
+    if (component->parent == nullptr)
+        return component;
 
-    // Log EQ relation as graph transition
-    for (auto const& eqRelation : eqRelations)
+    component->parent = Find (component->parent);
+
+    return component->parent;
+    }
+
+inline void Union (Component* root1, Component* root2)
+    {
+    if (root1->size < root2->size)
         {
-        graphNodes[eqRelation.r1].adjacent.push_back (eqRelation.r2);
-        graphNodes[eqRelation.r2].adjacent.push_back (eqRelation.r1);
+        root1->parent = root2;
+        root2->size += root1->size;
+        }
+    else
+        {
+        root2->parent = root1;
+        root1->size += root2->size;
+        }
+    }
+
+SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t expectedWorldCountFromRel,
+                                                     size_t tppRelationCount, size_t ntppRelationCount)
+    {
+    auto* components = new Component[variableCount];
+
+    for (auto relation : eqRelations)
+        {
+        auto* root1 = Find (&components[relation.r1]);
+        auto* root2 = Find (&components[relation.r2]);
+
+        if (root1 != root2)
+            Union (root1, root2);
         }
 
-    // Mark clusters by using BFS
-    size_t clusterCount = 0;
-    auto queue = std::queue<size_t> ();
-    for (size_t i = 0; i < variableCount; i++)
+    size_t sscCount = 0;
+    for (int i = 0; i < variableCount; i++)
         {
-        if (graphNodes[i].visited)
+        if (components[i].parent != nullptr)
             continue;
 
-        graphNodes[i].visited = true;
-        clusterIndices[i] = clusterCount;
-
-        queue.push (i);
-        while (!queue.empty ())
-            {
-            size_t nodeIndex = queue.front ();
-            queue.pop ();
-
-            for (size_t adjNodeIndex : graphNodes[nodeIndex].adjacent)
-                {
-                auto& adjNode = graphNodes[adjNodeIndex];
-                if (adjNode.visited)
-                    continue;
-
-                clusterIndices[adjNodeIndex] = clusterCount;
-                adjNode.visited = true;
-
-                if (adjNode.adjacent.size () > 1) // No need to check further if terminal node (i.e. only has rel with current node)
-                    queue.push (adjNodeIndex);
-                }
-            }
-
-        clusterCount++;
+        components[i].componentIndex = sscCount;
+        sscCount++;
         }
 
-    return SolutionContext (std::move (clusterIndices), clusterCount);
+    auto* strongConComp = new size_t[variableCount];
+    for (int i = 0; i < variableCount; i++)
+        {
+        auto* root = Find (&components[i]);
+        strongConComp[i] = root->componentIndex;
+        }
+
+    size_t expectedTppCount = std::min (tppRelationCount, sscCount);
+    size_t expectedNtppCount = std::min (ntppRelationCount, sscCount);
+
+    delete [] components;
+
+    return SolutionContext (strongConComp, sscCount, expectedWorldCountFromRel, expectedTppCount, expectedNtppCount);
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -112,9 +125,17 @@ void reasoner_utils::RegisterPORelations (std::vector<Relation> const& poRelatio
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::INTERIOR_TRUE }, { p2, Valuation::INTERIOR_TRUE } }, {&region1, &region2 }));
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::INTERIOR_TRUE } }, { &region2 }));
-        context.AddWorld (ModalWorld ({ { p1, Valuation::INTERIOR_TRUE }, { p2, Valuation::FALSE } }, { &region1 }));
+        auto& world1 = context.AddWorld ({ &region1, &region2 });
+        world1.SetValuation (p1, Valuation::INTERIOR_TRUE);
+        world1.SetValuation (p2, Valuation::INTERIOR_TRUE);
+
+        auto& world2 = context.AddWorld ({ &region2 });
+        world2.SetValuation (p1, Valuation::FALSE);
+        world2.SetValuation (p2, Valuation::INTERIOR_TRUE);
+
+        auto& world3 = context.AddWorld ({ &region1 });
+        world3.SetValuation (p1, Valuation::INTERIOR_TRUE);
+        world3.SetValuation (p2, Valuation::FALSE);
         }
     }
 
@@ -130,9 +151,13 @@ void reasoner_utils::RegisterTPPRelations (std::vector<Relation> const& tppRelat
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { &region2 }));
+        auto& world1 = context.AddWorld ({ &region2 });
+        world1.SetValuation (p1, Valuation::FALSE);
+        world1.SetValuation (p2, Valuation::TRUE);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::TRUE }, { p2, (Valuation) (Valuation::TRUE | Valuation::INTERIOR_FALSE) } }, {&region1, &region2 }));
+        auto& world2 = context.AddWorld ({ &region1, &region2 });
+        world2.SetValuation (p1, Valuation::TRUE);
+        world2.SetValuation (p2, static_cast<Valuation>(Valuation::TRUE | Valuation::INTERIOR_FALSE));
 
         region2.AddTPPDependant (&region1);
         }
@@ -150,7 +175,9 @@ void reasoner_utils::RegisterNTPPRelations (std::vector<Relation> const& ntppRel
         auto& region1 = context.GetRegionFromPropVar (p1);
         auto& region2 = context.GetRegionFromPropVar (p2);
 
-        context.AddWorld (ModalWorld ({ { p1, Valuation::FALSE }, { p2, Valuation::TRUE } }, { &region2 }));
+        auto& world = context.AddWorld ({ &region2 });
+        world.SetValuation (p1, Valuation::FALSE);
+        world.SetValuation (p2, Valuation::TRUE);
 
         region2.AddNTPPDependant (&region1);
         }
@@ -160,46 +187,71 @@ void reasoner_utils::RegisterNTPPRelations (std::vector<Relation> const& ntppRel
 
 bool ResolvePPDependencies (SolutionContext& context)
     {
-    auto queue = std::queue<Region*> ();
-    for (auto& region : context.GetRegions ())
+    size_t regionCount = context.GetPropVarCount ();
+    auto* queue = new Region*[regionCount];
+    size_t queueCounter = 0;
+
+    auto* regions = context.GetRegions();
+    for (size_t i = 0; i < context.GetPropVarCount (); i++)
         {
+        auto& region = regions[i];
+
         if (!region.HasDependencies ())
-            queue.push (&region);
+            queue[queueCounter++] = &region;
         }
 
     size_t iterations = 0;
-    while (!queue.empty ())
+    for (size_t queuePosition = 0; queuePosition < queueCounter; queuePosition++)
         {
-        auto* region = queue.front ();
-        queue.pop ();
+        auto* region = queue[queuePosition];
 
-        for (auto* ntppDependant : region->GetNTPPDependants ())
-            {
-            ntppDependant->DecrementNTPPDependencyCount ();
-            if (!ntppDependant->HasDependencies ())
-                queue.push (ntppDependant);
+        auto& valuationSet = region->GetValuationSet ();
+        auto* valuationIterator = valuationSet.GetIterator ();
+        size_t setCount = valuationSet.GetSetCount ();
 
-            for (auto valuation : region->GetValuations ())
-                ntppDependant->SetValuation (valuation.first, valuation.second);
+        {
+            auto& ntppDependantList = region->GetNTPPDependants ();
+            auto* nttpDependants = ntppDependantList.GetDependants ();
+            for (size_t i = 0; i < ntppDependantList.GetCount (); i++)
+                {
+                auto* ntppDependant = nttpDependants[i];
 
-            ntppDependant->SetValuation (region->GetPropVar (), Valuation::INTERIOR_TRUE);
-            }
+                ntppDependant->DecrementNTPPDependencyCount ();
+                if (!ntppDependant->HasDependencies ())
+                    queue[queueCounter++] = ntppDependant;
 
-        for (auto* tppDependant : region->GetTPPDependants ())
-            {
-            tppDependant->DecrementTPPDependencyCount ();
-            if (!tppDependant->HasDependencies ())
-                queue.push (tppDependant);
+                for (size_t j = 0; j < setCount; j++)
+                    {
+                    size_t propVar = valuationIterator[j];
+                    ntppDependant->SetValuation (propVar, valuationSet.GetValuation (propVar));
+                    }
 
-            for (auto valuation : region->GetValuations ())
-                tppDependant->SetValuation (valuation.first, valuation.second);
+                ntppDependant->SetValuation (region->GetPropVar (), Valuation::INTERIOR_TRUE);
+                }
+        }
+        {
+            auto& tppDependantList = region->GetTPPDependants ();
+            auto* ttpDependants = tppDependantList.GetDependants ();
+            for (size_t i = 0; i < tppDependantList.GetCount (); i++)
+                {
+                auto *tppDependant = ttpDependants[i];
 
-            }
+                tppDependant->DecrementTPPDependencyCount ();
+                if (!tppDependant->HasDependencies ())
+                    queue[queueCounter++] = tppDependant;
+
+                for (size_t j = 0; j < setCount; j++)
+                    {
+                    size_t propVar = valuationIterator[j];
+                    tppDependant->SetValuation (propVar, valuationSet.GetValuation (propVar));
+                    }
+                }
+        }
 
         iterations++;
         }
 
-    return iterations == context.GetRegions ().size ();
+    return iterations == context.GetPropVarCount ();
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -209,14 +261,34 @@ bool reasoner_utils::PropagateValuationsToWorlds (SolutionContext &context)
     if (!ResolvePPDependencies (context))
         return false;
 
-    for (auto& world : context.GetWorlds ())
+    auto* worlds = context.GetWorlds ();
+    for (size_t i = 0; i < context.GetWorldCount (); i++)
         {
-        for (auto& owners : world.GetOwners ())
+        auto& world = worlds[i];
+
+        for (auto& owner : world.GetOwners ())
             {
-            for (auto valuation : owners->GetValuations ())
+            auto& valuationSet = owner->GetValuationSet ();
+            auto* valuationIterator = valuationSet.GetIterator ();
+            size_t setCount = valuationSet.GetSetCount ();
+
+            for (size_t j = 0; j < setCount; j++)
                 {
-                if (!world.SetValuation (valuation.first, valuation.second))
-                    return false;
+                size_t propVar = valuationIterator[j];
+                auto valuation = world.SetValuation (propVar, valuationSet.GetValuation (propVar));
+                switch (valuation)
+                    {
+                    case Valuation::TRUE:
+                    case Valuation::FALSE:
+                    case Valuation::INTERIOR_TRUE:
+                    case Valuation::INTERIOR_FALSE:
+                    case Valuation::TRUE | Valuation::INTERIOR_TRUE:
+                    case Valuation::TRUE | Valuation::INTERIOR_FALSE:
+                    case Valuation::FALSE | Valuation::INTERIOR_FALSE:
+                        continue;
+                    default:
+                        return false;
+                    }
                 }
             }
         }

@@ -251,7 +251,8 @@ bool ResolvePPDependencies (SolutionContext& context)
         iterations++;
         }
 
-    return iterations == context.GetPropVarCount ();
+    delete [] queue;
+    return iterations == regionCount;
     }
 
 //---------------------------------------------------------------------------------------------------------------------

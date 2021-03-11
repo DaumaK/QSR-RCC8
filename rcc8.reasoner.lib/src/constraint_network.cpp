@@ -43,8 +43,7 @@ bool ConstraintNetwork::IsSatisfiable ()
         + m_ntppRelations.size ();
 
     // Register EQ relations first
-    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount, expectedWorldCountFromRel,
-                                                    m_tppRelations.size (), m_ntppRelations.size ());
+    auto context = internal::reasoner_utils::RegisterEQRelations (m_eqRelations, m_variableCount, expectedWorldCountFromRel);
 
     internal::reasoner_utils::RegisterDCRelations (m_dcRelations, context);
     internal::reasoner_utils::RegisterECRelations (m_ecRelations, context);

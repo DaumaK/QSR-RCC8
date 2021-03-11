@@ -118,13 +118,14 @@ namespace qsr::rcc8::internal
             Region () = default;
 
         public:
-            inline void Init (size_t propVar, size_t propVarCount, size_t expectedTppCount, size_t expectedNtppCount)
+            inline void Init (size_t propVar, size_t propVarCount)
                 {
                 m_assignedPropVar = propVar;
                 m_valuations.Init (propVarCount, propVar);
-                m_tppDependants.Init (expectedTppCount);
-                m_ntppDependants.Init (expectedNtppCount);
                 }
+
+            inline void InitTppDependants (size_t dependantCount) { m_tppDependants.Init (dependantCount); }
+            inline void InitNtppDependants (size_t dependantCount) { m_ntppDependants.Init (dependantCount); }
 
             inline Valuation GetValuation (size_t propVar) const { return m_valuations.GetValuation (propVar); }
             inline void SetValuation (size_t propVar, Valuation valuation) { m_valuations.SetValuation (propVar, valuation); }
@@ -182,8 +183,7 @@ namespace qsr::rcc8::internal
             size_t* m_calculusVariableToPropositionalVariable;
 
         public:
-            inline SolutionContext (size_t* calculusVariableToPropositionalVariable, size_t minimalWorldCount, size_t expectedWorldCountFromRel,
-                                    size_t expectedTppCount, size_t expectedNtppCount)
+            inline SolutionContext (size_t* calculusVariableToPropositionalVariable, size_t minimalWorldCount, size_t expectedWorldCountFromRel)
                 : m_propVarCount (minimalWorldCount)
                 , m_worldCount (minimalWorldCount) // Starting value, will increase by 'expectedWorldCountFromRel'
                 , m_regions (new Region[minimalWorldCount])
@@ -193,7 +193,7 @@ namespace qsr::rcc8::internal
                 // p_i must hold in every region r_i and its associated worlds
                 for (size_t i = 0; i < minimalWorldCount; i++)
                     {
-                    m_regions[i].Init (i, minimalWorldCount, expectedTppCount, expectedNtppCount);
+                    m_regions[i].Init (i, minimalWorldCount);
                     m_modalWorlds[i].Init (minimalWorldCount, { &m_regions[i] });
                     m_modalWorlds[i].SetValuation (i, Valuation::INTERIOR_TRUE);
                     }
@@ -226,8 +226,7 @@ namespace qsr::rcc8::internal
      *******************************************************************************/
     namespace reasoner_utils
         {
-        SolutionContext RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t expectedWorldCountFromRel,
-                                             size_t tppRelationCount, size_t ntppRelationCount);
+        SolutionContext RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t expectedWorldCountFromRel);
         void RegisterDCRelations (std::vector<Relation> const& dcRelations, SolutionContext& context);
         void RegisterECRelations (std::vector<Relation> const& ecRelations, SolutionContext& context);
         void RegisterPORelations (std::vector<Relation> const& poRelations, SolutionContext& context);

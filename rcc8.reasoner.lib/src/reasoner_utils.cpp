@@ -74,8 +74,7 @@ inline void Union (Component* root1, Component* root2)
         }
     }
 
-SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t expectedWorldCountFromRel,
-                                                     size_t tppRelationCount, size_t ntppRelationCount)
+SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const& eqRelations, size_t variableCount, size_t expectedWorldCountFromRel)
     {
     auto* components = new Component[variableCount];
 
@@ -89,7 +88,7 @@ SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const
         }
 
     size_t sscCount = 0;
-    for (int i = 0; i < variableCount; i++)
+    for (size_t i = 0; i < variableCount; i++)
         {
         if (components[i].parent != nullptr)
             continue;
@@ -99,18 +98,14 @@ SolutionContext reasoner_utils::RegisterEQRelations (std::vector<Relation> const
         }
 
     auto* strongConComp = new size_t[variableCount];
-    for (int i = 0; i < variableCount; i++)
+    for (size_t i = 0; i < variableCount; i++)
         {
         auto* root = Find (&components[i]);
         strongConComp[i] = root->componentIndex;
         }
 
-    size_t expectedTppCount = tppRelationCount; //std::min (tppRelationCount, sscCount);
-    size_t expectedNtppCount = ntppRelationCount; //std::min (ntppRelationCount, sscCount);
-
     delete [] components;
-
-    return SolutionContext (strongConComp, sscCount, expectedWorldCountFromRel, expectedTppCount, expectedNtppCount);
+    return SolutionContext (strongConComp, sscCount, expectedWorldCountFromRel);
     }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -143,6 +138,22 @@ void reasoner_utils::RegisterPORelations (std::vector<Relation> const& poRelatio
 
 void reasoner_utils::RegisterTPPRelations (std::vector<Relation> const& tppRelations, SolutionContext& context)
     {
+    // Count needed sizes
+    size_t regionCount = context.GetPropVarCount ();
+    size_t* tppDependantCounts = new size_t[regionCount];
+    std::memset (tppDependantCounts, 0, sizeof (tppDependantCounts) * regionCount);
+    for (auto relation : tppRelations)
+        {
+        size_t p = context.GetPropVarFromCalcVar (relation.r2);
+        tppDependantCounts[p]++;
+        }
+
+    auto* regions = context.GetRegions ();
+    for (int i = 0; i < regionCount; i++)
+        regions[i].InitTppDependants (tppDependantCounts[i]);
+
+    delete [] tppDependantCounts;
+
     for (auto relation : tppRelations)
         {
         size_t p1 = context.GetPropVarFromCalcVar(relation.r1);
@@ -167,6 +178,22 @@ void reasoner_utils::RegisterTPPRelations (std::vector<Relation> const& tppRelat
 
 void reasoner_utils::RegisterNTPPRelations (std::vector<Relation> const& ntppRelations, SolutionContext& context)
     {
+    // Count needed sizes
+    size_t regionCount = context.GetPropVarCount ();
+    size_t* ntppDependantCounts = new size_t[regionCount];
+    std::memset (ntppDependantCounts, 0, sizeof (ntppDependantCounts) * regionCount);
+    for (auto relation : ntppRelations)
+        {
+        size_t p = context.GetPropVarFromCalcVar (relation.r2);
+        ntppDependantCounts[p]++;
+        }
+
+    auto* regions = context.GetRegions ();
+    for (int i = 0; i < regionCount; i++)
+        regions[i].InitNtppDependants (ntppDependantCounts[i]);
+
+    delete [] ntppDependantCounts;
+
     for (auto relation : ntppRelations)
         {
         size_t p1 = context.GetPropVarFromCalcVar(relation.r1);

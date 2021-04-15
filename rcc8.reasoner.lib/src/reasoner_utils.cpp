@@ -261,7 +261,7 @@ bool ResolvePPDependencies (SolutionContext& context)
             auto* ttpDependants = tppDependantList.GetDependants ();
             for (size_t i = 0; i < tppDependantList.GetCount (); i++)
                 {
-                auto *tppDependant = ttpDependants[i];
+                auto* tppDependant = ttpDependants[i];
 
                 tppDependant->DecrementTPPDependencyCount ();
                 if (!tppDependant->HasDependencies ())

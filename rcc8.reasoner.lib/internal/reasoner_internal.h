@@ -88,7 +88,7 @@ namespace qsr::rcc8::internal
         public:
             inline void Init (size_t expectedDependantCount)
                 {
-                m_dependants = new Region*[expectedDependantCount];
+                m_dependants = expectedDependantCount == 0 ? nullptr : new Region*[expectedDependantCount];
                 m_dependantCount = 0;
                 }
 
